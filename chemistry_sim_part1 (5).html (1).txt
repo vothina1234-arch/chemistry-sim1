@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô phỏng Phản ứng Hóa học</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 15px;
+            font-size: 2.2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .instruction-box {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            max-width: 700px;
+            margin: 0 auto 15px;
+        }
+
+        .instruction-title {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .instruction-text {
+            color: #555;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .lab-scene {
+            background: linear-gradient(to bottom, 
+                #e8e0d5 0%,
+                #e0d8cd 300px,
+                #A0522D 300px,
+                #8B4513 100%
+            );
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            position: relative;
+            height: 600px;
+            overflow: hidden;
+        }
+
+        .workspace {
+            position: absolute;
+            top: 160px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding: 0 40px;
+        }
+
+        .chemicals-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 30px 30px;
+            row-gap: 20px;
+            z-index: 1;
+        }
+
+        .chemical-bottle {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: 10px;
+            border-radius: 12px;
+            border: 3px solid transparent;
+        }
+
+        .chemical-bottle:nth-child(1),
+        .chemical-bottle:nth-child(2),
+        .chemical-bottle:nth-child(3) {
+            transform: translateY(25px);
+        }
+
+        .chemical-bottle:hover {
+            transform: translateY(-8px) scale(1.08);
+            background: rgba(255,255,255,0.15);
+        }
+
+        .chemical-bottle:nth-child(1):hover,
+        .chemical-bottle:nth-child(2):hover,
+        .chemical-bottle:nth-child(3):hover {
+            transform: translateY(17px) scale(1.08);
+        }
+
+        .chemical-bottle.selected {
+            border: 4px solid #FFD700;
+            background: rgba(255,215,0,0.25);
+            transform: scale(1.15);
+            box-shadow: 0 10px 30px rgba(255,215,0,0.7);
+        }
+
+        .chemical-bottle:nth-child(1).selected,
+        .chemical-bottle:nth-child(2).selected,
+        .chemical-bottle:nth-child(3).selected {
+            transform: translateY(25px) scale(1.15);
+        }
+
+        .bottle-view {
+            position: relative;
+            width: 100px;
+            height: 120px;
+            margin-bottom: 10px;
+        }
+
+        .bottle-cap {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 38px;
+            height: 15px;
+            background: linear-gradient(to bottom, #9d6b3f, #7d5230);
+            border-radius: 6px 6px 0 0;
+            border: 2px solid #4a2810;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            z-index: 3;
+        }
+
+        .bottle-neck {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 35px;
+            background: linear-gradient(to right,
+                rgba(160, 185, 215, 0.35),
+                rgba(185, 205, 230, 0.5),
+                rgba(160, 185, 215, 0.35)
+            );
+            border: 3px solid rgba(70, 70, 70, 0.65);
+            border-bottom: none;
+            box-shadow: inset 2px 0 8px rgba(255,255,255,0.3);
+            z-index: 2;
+        }
+
+        .bottle-body {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95px;
+            height: 75px;
+            background: linear-gradient(to right,
+                rgba(160, 185, 215, 0.3),
+                rgba(185, 205, 230, 0.5),
+                rgba(160, 185, 215, 0.3)
+            );
+            border: 4px solid rgba(70, 70, 70, 0.7);
+            clip-path: polygon(28% 0%, 72% 0%, 100% 100%, 0% 100%);
+            box-shadow: 
+                inset -5px 0 12px rgba(0,0,0,0.15),
+                inset 5px 0 15px rgba(255,255,255,0.4),
+                5px 8px 20px rgba(0,0,0,0.35);
+            z-index: 1;
+        }
+
+        .bottle-liquid {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            right: 4px;
+            height: 65%;
+            clip-path: polygon(32% 0%, 68% 0%, 98% 100%, 2% 100%);
+        }
+
+        .bottle-liquid.CuSO4 {
+            background: linear-gradient(to bottom, #4da6ff, #0066cc);
+        }
+
+        .bottle-liquid.H2SO4 {
+            background: linear-gradient(to bottom, rgba(255,255,255,0.7), rgba(240,240,240,0.85));
+        }
+
+        .bottle-liquid.NaOH {
+            background: linear-gradient(to bottom, rgba(255,255,255,0.65), rgba(245,245,245,0.8));
+        }
+
+        .bottle-liquid.Na2SO4 {
+            background: linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(250,250,250,0.75));
+        }
+
+        .bottle-liquid.BaCl2 {
+            background: linear-gradient(to bottom, rgba(255,255,255,0.6), rgba(240,240,240,0.8));
+        }
+
+        .iron-container {
+            width: 95px;
+            height: 75px;
+            background: linear-gradient(to right,
+                rgba(185, 205, 230, 0.35),
+                rgba(205, 220, 240, 0.52),
+                rgba(185, 205, 230, 0.35)
+            );
+            border: 4px solid rgba(70, 70, 70, 0.7);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 5px 8px 20px rgba(0,0,0,0.35);
+        }
+
+        .nail-icon {
+            width: 10px;
+            height: 55px;
+            background: linear-gradient(to right, #7d7d7d, #5a5a5a, #7d7d7d);
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .nail-icon::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 17px;
+            height: 13px;
+            background: #6d6d6d;
+            border-radius: 50% 50% 0 0;
+        }
+
+        .bottle-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.05em;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        .bottle-formula {
+            font-size: 0.82em;
+            color: #555;
+            text-align: center;
+        }
+
+        .test-tube-container {
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .test-tube {
+            position: relative;
+            width: 70px;
+            height: 380px;
+            background: linear-gradient(to right, 
+                rgba(160, 185, 215, 0.4),
+                rgba(190, 210, 235, 0.6),
+                rgba(160, 185, 215, 0.4)
+            );
+            border: 5px solid rgba(80, 80, 80, 0.7);
+            border-radius: 0 0 35px 35px;
+            overflow: hidden;
+            box-shadow: 
+                inset -5px 0 15px rgba(0,0,0,0.15),
+                inset 5px 0 18px rgba(255,255,255,0.42),
+                8px 10px 28px rgba(0,0,0,0.35);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .test-tube:hover {
+            transform: scale(1.05);
+        }
+
+        .test-tube.can-add {
+            border-color: #FFD700;
+            animation: tube-glow 1.2s infinite;
+        }
+
+        @keyframes tube-glow {
+            0%, 100% { 
+                box-shadow: 
+                    inset -5px 0 15px rgba(0,0,0,0.15),
+                    inset 5px 0 18px rgba(255,255,255,0.42),
+                    0 0 30px rgba(255, 215, 0, 0.8);
+            }
+            50% { 
+                box-shadow: 
+                    inset -5px 0 15px rgba(0,0,0,0.15),
+                    inset 5px 0 18px rgba(255,255,255,0.42),
+                    0 0 45px rgba(255, 215, 0, 1);
+            }
+        }
+
+        .tube-measurement {
+            position: absolute;
+            left: 5px;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 50px 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .measurement-mark {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding-left: 3px;
+        }
+
+        .measurement-line {
+            width: 15px;
+            height: 1.5px;
+            background: rgba(100, 100, 100, 0.4);
+        }
+
+        .measurement-text {
+            font-size: 9px;
+            color: rgba(80, 80, 80, 0.5);
+            font-weight: bold;
+        }
+
+        .tube-liquid {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 0;
+            border-radius: 0 0 30px 30px;
+            transition: height 0.8s ease;
+        }
+
+        .bubbles {
+            display: none;
+        }
+
+        .precipitate {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 0;
+            border-radius: 0 0 30px 30px;
+            transition: height 2.5s ease;
+            z-index: 2;
+        }
+
+        .reaction-bubbles {
+            display: none;
+        }
+
+        .nail-in-tube {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 9px;
+            height: 75px;
+            background: linear-gradient(to right, #7d7d7d, #5a5a5a, #7d7d7d);
+            border-radius: 3px;
+            display: none;
+            z-index: 3;
+        }
+
+        .nail-in-tube::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 11px;
+            background: #6d6d6d;
+            border-radius: 50% 50% 0 0;
+        }
+
+        .copper-coating {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 9px;
+            height: 0;
+            background: linear-gradient(to right, #b37333, #d48f5f, #b37333);
+            border-radius: 3px;
+            transition: height 3s ease;
+            z-index: 4;
+            box-shadow: 0 0 12px rgba(179, 115, 51, 0.9);
+        }
+
+        .pipette {
+            position: fixed;
+            width: 24px;
+            height: 200px;
+            background: linear-gradient(to right,
+                rgba(185, 205, 230, 0.7),
+                rgba(215, 230, 245, 0.87),
+                rgba(185, 205, 230, 0.7)
+            );
+            border: 3px solid rgba(80, 80, 80, 0.72);
+            border-radius: 6px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+            transition: opacity 0.3s;
+            box-shadow: 5px 5px 20px rgba(0,0,0,0.4);
+        }
+
+        .pipette::before {
+            content: '';
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border-radius: 50%;
+            border: 3px solid #a93226;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35), inset 0 -3px 6px rgba(0,0,0,0.25);
+        }
+
+        .pipette::after {
+            content: '';
+            position: absolute;
+            bottom: -19px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 15px;
+            height: 22px;
+            background: linear-gradient(to right,
+                rgba(185, 205, 230, 0.78),
+                rgba(215, 230, 245, 0.92),
+                rgba(185, 205, 230, 0.78)
+            );
+            border: 2px solid rgba(80, 80, 80, 0.72);
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+        }
+
+        .pipette-liquid {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 0;
+            border-radius: 0 0 6px 6px;
+            transition: height 0.6s ease;
+        }
+
+        .pipette.active {
+            opacity: 1;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .reset-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.08em;
+            font-weight: bold;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+            transition: all 0.3s;
+        }
+
+        .reset-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .info-title {
+            font-size: 1.08em;
+            color: #667eea;
+            margin-bottom: 12px;
+            font-weight: bold;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .chemicals-list {
+            min-height: 40px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .chemical-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.88em;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .reaction-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.5);
+            border-left: 6px solid #3498db;
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+            transition: all 0.4s;
+            z-index: 1001;
+            max-width: 500px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .reaction-notification.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .reaction-notification:hover {
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        }
+
+        .reaction-notification.hint-mode:hover {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .reaction-notification.hint-mode {
+            cursor: default;
+        }
+
+        .notification-title {
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notification-question {
+            color: #2c3e50;
+            font-size: 1.05em;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .notification-answer {
+            color: #27ae60;
+            font-size: 0.98em;
+            line-height: 1.6;
+            padding: 15px;
+            background: rgba(39, 174, 96, 0.08);
+            border-radius: 10px;
+            border-left: 4px solid #27ae60;
+            display: none;
+            margin-top: 15px;
+            animation: slideDown 0.3s ease;
+        }
+
+        .notification-answer.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .click-hint {
+            text-align: center;
+            color: #95a5a6;
+            font-size: 0.85em;
+            margin-top: 12px;
+            font-style: italic;
+        }
+
+        .notification-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .notification-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .question-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+            transition: all 0.3s;
+            z-index: 999;
+            border: 3px solid white;
+        }
+
+        .question-button.show {
+            display: flex;
+        }
+
+        .question-button:hover {
+            transform: scale(1.1) translateY(-3px);
+            box-shadow: 0 12px 35px rgba(52, 152, 219, 0.6);
+        }
+
+        .question-button::before {
+            content: '?';
+            font-size: 32px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .question-button::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid #3498db;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 0;
+            }
+        }
+
+        .hint-button {
+            position: fixed;
+            bottom: 30px;
+            right: 110px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(243, 156, 18, 0.4);
+            transition: all 0.3s;
+            z-index: 999;
+            border: 3px solid white;
+        }
+
+        .hint-button:hover {
+            transform: scale(1.1) translateY(-3px);
+            box-shadow: 0 12px 35px rgba(243, 156, 18, 0.6);
+        }
+
+        .hint-button::before {
+            content: '💡';
+            font-size: 28px;
+        }
+
+        .hint-button::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid #f39c12;
+            animation: pulse 2s infinite;
+        }
+
+        .hint-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.5);
+            border-left: 6px solid #f39c12;
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.8);
+            transition: all 0.4s;
+            z-index: 1001;
+            max-width: 550px;
+            width: 90%;
+            pointer-events: none;
+        }
+
+        .hint-modal.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: all;
+        }
+
+        .hint-title {
+            font-weight: bold;
+            color: #f39c12;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .hint-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .hint-item {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, rgba(243, 156, 18, 0.08), rgba(230, 126, 34, 0.05));
+            border-radius: 12px;
+            border-left: 4px solid #f39c12;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .hint-item:hover {
+            transform: translateX(8px);
+            background: linear-gradient(135deg, rgba(243, 156, 18, 0.15), rgba(230, 126, 34, 0.1));
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.2);
+        }
+
+        .hint-item-title {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.05em;
+        }
+
+        .hint-item-desc {
+            display: none;
+        }
+
+        .hint-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e74c3c;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .hint-close:hover {
+            background: #c0392b;
+            transform: rotate(90deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Mô phỏng Phản ứng Hóa học</h1>
+        
+        <div class="instruction-box">
+            <div class="instruction-title">📝 Hướng dẫn sử dụng:</div>
+            <div class="instruction-text">
+                <strong>Bước 1:</strong> Click chọn bình hóa chất bên trái (viền vàng sáng)<br>
+                <strong>Bước 2:</strong> Click vào ống nghiệm bên phải<br>
+                <strong>Bước 3:</strong> Ống hút pipette sẽ tự động hút và nhỏ chất vào ống<br>
+                <strong>Bước 4:</strong> Quan sát phản ứng hóa học - Nhấn RESET để làm mới
+            </div>
+        </div>
+
+        <div class="lab-scene">
+            <div class="controls">
+                <button class="reset-btn">🔄 RESET THÍ NGHIỆM</button>
+            </div>
+
+            <div class="info-panel">
+                <div class="info-title">📋 Chất đã thêm vào ống:</div>
+                <div class="chemicals-list" id="chemicals-list"></div>
+            </div>
+
+            <div class="workspace">
+                <div class="chemicals-grid">
+                    <div class="chemical-bottle" data-chemical="CuSO4">
+                        <div class="bottle-view">
+                            <div class="bottle-cap"></div>
+                            <div class="bottle-neck"></div>
+                            <div class="bottle-body">
+                                <div class="bottle-liquid CuSO4"></div>
+                            </div>
+                        </div>
+                        <div class="bottle-name">CuSO₄</div>
+                        <div class="bottle-formula">Copper (II) sulfate</div>
+                    </div>
+
+                    <div class="chemical-bottle" data-chemical="H2SO4">
+                        <div class="bottle-view">
+                            <div class="bottle-cap"></div>
+                            <div class="bottle-neck"></div>
+                            <div class="bottle-body">
+                                <div class="bottle-liquid H2SO4"></div>
+                            </div>
+                        </div>
+                        <div class="bottle-name">H₂SO₄</div>
+                        <div class="bottle-formula">Sulfuric acid</div>
+                    </div>
+
+                    <div class="chemical-bottle" data-chemical="NaOH">
+                        <div class="bottle-view">
+                            <div class="bottle-cap"></div>
+                            <div class="bottle-neck"></div>
+                            <div class="bottle-body">
+                                <div class="bottle-liquid NaOH"></div>
+                            </div>
+                        </div>
+                        <div class="bottle-name">NaOH</div>
+                        <div class="bottle-formula">Sodium hydroxide</div>
+                    </div>
+
+                    <div class="chemical-bottle" data-chemical="Na2SO4">
+                        <div class="bottle-view">
+                            <div class="bottle-cap"></div>
+                            <div class="bottle-neck"></div>
+                            <div class="bottle-body">
+                                <div class="bottle-liquid Na2SO4"></div>
+                            </div>
+                        </div>
+                        <div class="bottle-name">Na₂SO₄</div>
+                        <div class="bottle-formula">Sodium sulfate</div>
+                    </div>
+
+                    <div class="chemical-bottle" data-chemical="BaCl2">
+                        <div class="bottle-view">
+                            <div class="bottle-cap"></div>
+                            <div class="bottle-neck"></div>
+                            <div class="bottle-body">
+                                <div class="bottle-liquid BaCl2"></div>
+                            </div>
+                        </div>
+                        <div class="bottle-name">BaCl₂</div>
+                        <div class="bottle-formula">Barium chloride</div>
+                    </div>
+
+                    <div class="chemical-bottle" data-chemical="Fe">
+                        <div class="bottle-view">
+                            <div class="iron-container">
+                                <div class="nail-icon"></div>
+                            </div>
+                        </div>
+                        <div class="bottle-name">Fe</div>
+                        <div class="bottle-formula">Iron</div>
+                    </div>
+                </div>
+
+                <div class="test-tube-container">
+                    <div class="tube-measurement">
+                        <div class="measurement-mark">
+                            <div class="measurement-line"></div>
+                            <div class="measurement-text">300</div>
+                        </div>
+                        <div class="measurement-mark">
+                            <div class="measurement-line"></div>
+                            <div class="measurement-text">250</div>
+                        </div>
+                        <div class="measurement-mark">
+                            <div class="measurement-line"></div>
+                            <div class="measurement-text">200</div>
+                        </div>
+                        <div class="measurement-mark">
+                            <div class="measurement-line"></div>
+                            <div class="measurement-text">150</div>
+                        </div>
+                        <div class="measurement-mark">
+                            <div class="measurement-line"></div>
+                            <div class="measurement-text">100</div>
+                        </div>
+                        <div class="measurement-mark">
+                            <div class="measurement-line"></div>
+                            <div class="measurement-text">50</div>
+                        </div>
+                    </div>
+                    <div class="test-tube">
+                        <div class="tube-measurement">
+                            <div class="measurement-mark">
+                                <div class="measurement-line"></div>
+                                <div class="measurement-text">300</div>
+                            </div>
+                            <div class="measurement-mark">
+                                <div class="measurement-line"></div>
+                                <div class="measurement-text">250</div>
+                            </div>
+                            <div class="measurement-mark">
+                                <div class="measurement-line"></div>
+                                <div class="measurement-text">200</div>
+                            </div>
+                            <div class="measurement-mark">
+                                <div class="measurement-line"></div>
+                                <div class="measurement-text">150</div>
+                            </div>
+                            <div class="measurement-mark">
+                                <div class="measurement-line"></div>
+                                <div class="measurement-text">100</div>
+                            </div>
+                            <div class="measurement-mark">
+                                <div class="measurement-line"></div>
+                                <div class="measurement-text">50</div>
+                            </div>
+                        </div>
+                        <div class="tube-liquid">
+                            <div class="bubbles">
+                                <div class="bubble"></div>
+                                <div class="bubble"></div>
+                                <div class="bubble"></div>
+                                <div class="bubble"></div>
+                                <div class="bubble"></div>
+                                <div class="bubble"></div>
+                                <div class="bubble"></div>
+                                <div class="bubble"></div>
+                                <div class="bubble"></div>
+                                <div class="bubble"></div>
+                            </div>
+                        </div>
+                        <div class="reaction-bubbles">
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                            <div class="reaction-bubble"></div>
+                        </div>
+                        <div class="nail-in-tube"></div>
+                        <div class="copper-coating"></div>
+                        <div class="precipitate"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="pipette">
+        <div class="pipette-liquid"></div>
+    </div>
+
+    <div class="notification-overlay"></div>
+
+    <div class="reaction-notification">
+        <div class="notification-title">🤔 Câu hỏi thí nghiệm</div>
+        <div class="notification-question"></div>
+        <div class="notification-answer"></div>
+        <div class="click-hint">👆 Nhấn để xem đáp án</div>
+    </div>
+
+    <div class="question-button"></div>
+
+    <div class="hint-button"></div>
+
+    <div class="hint-modal">
+        <div class="hint-close">×</div>
+        <div class="hint-title">💡 Gợi ý thí nghiệm</div>
+        <div class="hint-list">
+            <div class="hint-item" data-exp="1">
+                <div class="hint-item-title">🔴 Experiment 1: Iron and Copper (II) sulfate</div>
+                <div class="hint-item-desc">Add iron nail (Fe) into CuSO₄ solution</div>
+            </div>
+            <div class="hint-item" data-exp="2">
+                <div class="hint-item-title">⚪ Experiment 2: Barium chloride and Sulfuric acid</div>
+                <div class="hint-item-desc">Mix BaCl₂ with H₂SO₄ to form white precipitate</div>
+            </div>
+            <div class="hint-item" data-exp="3">
+                <div class="hint-item-title">⚪ Experiment 3: Barium chloride and Sodium sulfate</div>
+                <div class="hint-item-desc">Mix BaCl₂ with Na₂SO₄ to form white precipitate</div>
+            </div>
+            <div class="hint-item" data-exp="4">
+                <div class="hint-item-title">🔵 Experiment 4: Copper (II) sulfate and Sodium hydroxide</div>
+                <div class="hint-item-desc">Add NaOH into CuSO₄ to form blue precipitate</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedChemical = null;
+        let selectedBottleElement = null;
+        let tubeState = [];
+
+        const chemicalsInfo = {
+            CuSO4: {
+                name: 'CuSO₄',
+                color: 'linear-gradient(to right, #2b8fd9, #1a6bb8, #2b8fd9)',
+                type: 'solution'
+            },
+            H2SO4: {
+                name: 'H₂SO₄',
+                color: 'linear-gradient(to right, rgba(245,245,245,0.72), rgba(230,230,230,0.85), rgba(245,245,245,0.72))',
+                type: 'solution'
+            },
+            NaOH: {
+                name: 'NaOH',
+                color: 'linear-gradient(to right, rgba(243,243,243,0.65), rgba(233,233,233,0.8), rgba(243,243,243,0.65))',
+                type: 'solution'
+            },
+            Na2SO4: {
+                name: 'Na₂SO₄',
+                color: 'linear-gradient(to right, rgba(248,248,248,0.55), rgba(237,237,237,0.75), rgba(248,248,248,0.55))',
+                type: 'solution'
+            },
+            BaCl2: {
+                name: 'BaCl₂',
+                color: 'linear-gradient(to right, rgba(243,243,243,0.62), rgba(231,231,231,0.78), rgba(243,243,243,0.62))',
+                type: 'solution'
+            },
+            Fe: {
+                name: 'Fe',
+                color: null,
+                type: 'solid'
+            }
+        };
+
+        const bottles = document.querySelectorAll('.chemical-bottle');
+        const testTube = document.querySelector('.test-tube');
+        const pipette = document.querySelector('.pipette');
+        const pipetteLiquid = document.querySelector('.pipette-liquid');
+        const resetBtn = document.querySelector('.reset-btn');
+        const notification = document.querySelector('.reaction-notification');
+        const notificationOverlay = document.querySelector('.notification-overlay');
+        const chemicalsList = document.getElementById('chemicals-list');
+        const questionButton = document.querySelector('.question-button');
+        const hintButton = document.querySelector('.hint-button');
+        const hintModal = document.querySelector('.hint-modal');
+        const hintClose = document.querySelector('.hint-close');
+        let isAnswerShown = false;
+        let currentQuestion = '';
+        let currentAnswer = '';
+
+        bottles.forEach(function(bottle) {
+            bottle.addEventListener('click', function() {
+                bottles.forEach(function(b) {
+                    b.classList.remove('selected');
+                });
+                bottle.classList.add('selected');
+                selectedChemical = bottle.dataset.chemical;
+                selectedBottleElement = bottle;
+                testTube.classList.add('can-add');
+            });
+        });
+
+        testTube.addEventListener('click', function() {
+            if (!selectedChemical || !selectedBottleElement) {
+                showNotification('⚠️ Chưa chọn chất!', 'Vui lòng chọn một bình hóa chất trước.', '#e74c3c');
+                return;
+            }
+
+            const bottleRect = selectedBottleElement.getBoundingClientRect();
+            const tubeRect = testTube.getBoundingClientRect();
+
+            if (chemicalsInfo[selectedChemical].type === 'solution') {
+                animatePipette(bottleRect, tubeRect, selectedChemical);
+            } else {
+                animateNailDrop();
+            }
+
+            tubeState.push(selectedChemical);
+
+            setTimeout(function() {
+                updateTubeDisplay();
+                updateChemicalsList();
+                checkReactions();
+            }, 3500);
+
+            bottles.forEach(function(b) {
+                b.classList.remove('selected');
+            });
+            testTube.classList.remove('can-add');
+            selectedChemical = null;
+            selectedBottleElement = null;
+        });
+
+        function animatePipette(bottleRect, tubeRect, chemical) {
+            const pipetteLeft = Math.round(bottleRect.left + (bottleRect.width / 2) - 12);
+            const pipetteTop = Math.round(bottleRect.top + bottleRect.height / 2 + 20 - 200);
+            
+            pipette.style.left = pipetteLeft + 'px';
+            pipette.style.top = pipetteTop + 'px';
+            pipette.style.transition = 'none';
+            pipetteLiquid.style.background = chemicalsInfo[chemical].color;
+            pipetteLiquid.style.height = '0';
+            
+            setTimeout(function() {
+                pipette.classList.add('active');
+            }, 50);
+
+            setTimeout(function() {
+                pipetteLiquid.style.height = '100px';
+            }, 400);
+
+            setTimeout(function() {
+                const targetLeft = Math.round(tubeRect.left + tubeRect.width / 2 - 12);
+                const targetTop = Math.round(tubeRect.top - 230);
+                
+                pipette.style.transition = 'all 1.2s ease';
+                pipette.style.left = targetLeft + 'px';
+                pipette.style.top = targetTop + 'px';
+            }, 1200);
+
+            setTimeout(function() {
+                pipetteLiquid.style.height = '0';
+            }, 2600);
+
+            setTimeout(function() {
+                pipette.classList.remove('active');
+                pipette.style.transition = '';
+            }, 3400);
+        }
+
+        function animateNailDrop() {
+            const nail = testTube.querySelector('.nail-in-tube');
+            nail.style.display = 'block';
+            nail.style.top = '-100px';
+            nail.style.transition = 'none';
+            
+            setTimeout(function() {
+                nail.style.transition = 'top 1.2s ease-in';
+                nail.style.top = '';
+            }, 100);
+        }
+
+        function updateTubeDisplay() {
+            const liquid = testTube.querySelector('.tube-liquid');
+            const solutionCount = tubeState.filter(function(c) {
+                return chemicalsInfo[c].type === 'solution';
+            }).length;
+            const height = solutionCount * 90;
+            liquid.style.height = height + 'px';
+
+            let displayColor = 'transparent';
+            const coloredChemicals = tubeState.filter(function(c) {
+                return chemicalsInfo[c].color;
+            });
+            if (coloredChemicals.length > 0) {
+                displayColor = chemicalsInfo[coloredChemicals[coloredChemicals.length - 1]].color;
+            }
+            liquid.style.background = displayColor;
+        }
+
+        function updateChemicalsList() {
+            chemicalsList.innerHTML = '';
+            if (tubeState.length === 0) {
+                chemicalsList.innerHTML = '<span style="color: #999; font-style: italic;">Chưa có chất nào</span>';
+                return;
+            }
+            tubeState.forEach(function(chem) {
+                const tag = document.createElement('span');
+                tag.className = 'chemical-tag';
+                tag.textContent = chemicalsInfo[chem].name;
+                chemicalsList.appendChild(tag);
+            });
+        }
+
+        function checkReactions() {
+            const liquid = testTube.querySelector('.tube-liquid');
+            const precipitate = testTube.querySelector('.precipitate');
+            const copperCoating = testTube.querySelector('.copper-coating');
+
+            if (tubeState.indexOf('Fe') !== -1 && tubeState.indexOf('CuSO4') !== -1) {
+                setTimeout(function() {
+                    liquid.style.background = 'linear-gradient(to right, #66b3ff, #4da6ff, #66b3ff)';
+                }, 1000);
+                setTimeout(function() {
+                    copperCoating.style.height = '65px';
+                }, 2000);
+                
+                setTimeout(function() {
+                    currentQuestion = 'Khi cho đinh sắt (Fe) vào dung dịch đồng sunfat (CuSO₄), quan sát hiện tượng xảy ra. Em hãy cho biết hiện tượng gì xuất hiện?';
+                    currentAnswer = 'Hiện tượng: Màu xanh của dung dịch nhạt dần, đinh sắt bị phủ một lớp đồng màu đỏ bám trên bề mặt.<br><br><strong>Giải thích:</strong> Sắt đẩy đồng ra khỏi dung dịch muối theo phương trình:<br>Fe + CuSO₄ → FeSO₄ + Cu↓';
+                    questionButton.classList.add('show');
+                }, 3000);
+            }
+
+            if (tubeState.indexOf('BaCl2') !== -1 && tubeState.indexOf('H2SO4') !== -1) {
+                setTimeout(function() {
+                    precipitate.style.background = 'linear-gradient(to right, rgba(250,250,250,0.92), rgba(240,240,240,0.96), rgba(250,250,250,0.92))';
+                    precipitate.style.height = '55px';
+                }, 1000);
+                
+                setTimeout(function() {
+                    currentQuestion = 'Khi trộn dung dịch bari clorua (BaCl₂) với axit sunfuric loãng (H₂SO₄), em quan sát được hiện tượng gì?';
+                    currentAnswer = 'Hiện tượng: Xuất hiện kết tủa trắng không tan.<br><br><strong>Giải thích:</strong> Tạo thành kết tủa trắng bari sunfat (BaSO₄) theo phương trình:<br>BaCl₂ + H₂SO₄ → BaSO₄↓ + 2HCl';
+                    questionButton.classList.add('show');
+                }, 2500);
+            }
+
+            if (tubeState.indexOf('BaCl2') !== -1 && tubeState.indexOf('Na2SO4') !== -1) {
+                setTimeout(function() {
+                    precipitate.style.background = 'linear-gradient(to right, rgba(250,250,250,0.92), rgba(240,240,240,0.96), rgba(250,250,250,0.92))';
+                    precipitate.style.height = '55px';
+                }, 1000);
+                
+                setTimeout(function() {
+                    currentQuestion = 'Khi trộn dung dịch bari clorua (BaCl₂) với dung dịch natri sunfat (Na₂SO₄), hiện tượng nào xuất hiện?';
+                    currentAnswer = 'Hiện tượng: Xuất hiện kết tủa trắng không tan.<br><br><strong>Giải thích:</strong> Tạo thành kết tủa trắng bari sunfat (BaSO₄) theo phương trình:<br>BaCl₂ + Na₂SO₄ → BaSO₄↓ + 2NaCl';
+                    questionButton.classList.add('show');
+                }, 2500);
+            }
+
+            if (tubeState.indexOf('CuSO4') !== -1 && tubeState.indexOf('NaOH') !== -1) {
+                setTimeout(function() {
+                    precipitate.style.background = 'linear-gradient(to right, #0066cc, #004d99, #0066cc)';
+                    precipitate.style.height = '65px';
+                    liquid.style.background = 'linear-gradient(to right, #99ccff, #cce6ff, #99ccff)';
+                }, 1000);
+                
+                setTimeout(function() {
+                    currentQuestion = 'Khi nhỏ dung dịch natri hidroxit (NaOH) vào dung dịch đồng sunfat (CuSO₄), em quan sát thấy hiện tượng gì?';
+                    currentAnswer = 'Hiện tượng: Xuất hiện kết tủa xanh đậm, dung dịch còn lại có màu xanh nhạt hơn.<br><br><strong>Giải thích:</strong> Tạo thành kết tủa xanh đồng hidroxit Cu(OH)₂ theo phương trình:<br>CuSO₄ + 2NaOH → Cu(OH)₂↓ + Na₂SO₄';
+                    questionButton.classList.add('show');
+                }, 3000);
+            }
+        }
+
+        function showQuestion(question, answer) {
+            const notifQuestion = notification.querySelector('.notification-question');
+            const notifAnswer = notification.querySelector('.notification-answer');
+            const clickHint = notification.querySelector('.click-hint');
+            const notifTitle = notification.querySelector('.notification-title');
+            
+            notification.classList.remove('hint-mode');
+            notifTitle.style.color = '#3498db';
+            notifTitle.innerHTML = '🤔 Câu hỏi thí nghiệm';
+            notification.style.borderLeftColor = '#3498db';
+            
+            currentQuestion = question;
+            currentAnswer = answer;
+            
+            notifQuestion.textContent = question;
+            notifQuestion.style.whiteSpace = 'normal';
+            notifAnswer.innerHTML = answer;
+            notifAnswer.classList.remove('show');
+            clickHint.style.display = 'block';
+            isAnswerShown = false;
+            
+            notification.classList.add('show');
+            notificationOverlay.classList.add('show');
+            questionButton.classList.add('show');
+        }
+
+        notification.addEventListener('click', function() {
+            if (notification.classList.contains('hint-mode')) {
+                return;
+            }
+            if (!isAnswerShown) {
+                const notifAnswer = notification.querySelector('.notification-answer');
+                const clickHint = notification.querySelector('.click-hint');
+                notifAnswer.classList.add('show');
+                clickHint.style.display = 'none';
+                isAnswerShown = true;
+            } else {
+                closeNotification();
+            }
+        });
+
+        notificationOverlay.addEventListener('click', function() {
+            closeNotification();
+        });
+
+        questionButton.addEventListener('click', function() {
+            if (currentQuestion && currentAnswer) {
+                showQuestion(currentQuestion, currentAnswer);
+            }
+        });
+
+        function closeNotification() {
+            notification.classList.remove('show');
+            notification.classList.remove('hint-mode');
+            notificationOverlay.classList.remove('show');
+            isAnswerShown = false;
+        }
+
+        hintButton.addEventListener('click', function() {
+            hintModal.classList.add('show');
+            notificationOverlay.classList.add('show');
+        });
+
+        hintClose.addEventListener('click', function() {
+            hintModal.classList.remove('show');
+            notificationOverlay.classList.remove('show');
+        });
+
+        notificationOverlay.addEventListener('click', function() {
+            if (hintModal.classList.contains('show')) {
+                hintModal.classList.remove('show');
+            }
+            if (notification.classList.contains('show')) {
+                closeNotification();
+            }
+            notificationOverlay.classList.remove('show');
+        });
+
+        const hintItems = document.querySelectorAll('.hint-item');
+        hintItems.forEach(function(item) {
+            item.addEventListener('click', function() {
+                const expType = item.getAttribute('data-exp');
+                hintModal.classList.remove('show');
+                
+                setTimeout(function() {
+                    const notifQuestion = notification.querySelector('.notification-question');
+                    const notifAnswer = notification.querySelector('.notification-answer');
+                    const clickHint = notification.querySelector('.click-hint');
+                    const notifTitle = notification.querySelector('.notification-title');
+                    
+                    notification.classList.add('hint-mode');
+                    notifAnswer.classList.remove('show');
+                    clickHint.style.display = 'none';
+                    notification.style.borderLeftColor = '#f39c12';
+                    notifTitle.style.color = '#f39c12';
+                    notifQuestion.style.whiteSpace = 'pre-line';
+                    
+                    if (expType === '1') {
+                        notifTitle.innerHTML = '💡 Gợi ý thí nghiệm 1';
+                        notifQuestion.textContent = 'Bước 1: Chọn lọ CuSO₄ (đồng sunfat - màu xanh)\nBước 2: Click vào ống nghiệm\nBước 3: Chọn Fe (đinh sắt)\nBước 4: Click vào ống nghiệm lần nữa\nBước 5: Quan sát hiện tượng!';
+                    } else if (expType === '2') {
+                        notifTitle.innerHTML = '💡 Gợi ý thí nghiệm 2';
+                        notifQuestion.textContent = 'Bước 1: Chọn lọ BaCl₂ (bari clorua)\nBước 2: Click vào ống nghiệm\nBước 3: Chọn H₂SO₄ (axit sunfuric)\nBước 4: Click vào ống nghiệm lần nữa\nBước 5: Quan sát hiện tượng!';
+                    } else if (expType === '3') {
+                        notifTitle.innerHTML = '💡 Gợi ý thí nghiệm 3';
+                        notifQuestion.textContent = 'Bước 1: Chọn lọ BaCl₂ (bari clorua)\nBước 2: Click vào ống nghiệm\nBước 3: Chọn Na₂SO₄ (natri sunfat)\nBước 4: Click vào ống nghiệm lần nữa\nBước 5: Quan sát hiện tượng!';
+                    } else if (expType === '4') {
+                        notifTitle.innerHTML = '💡 Gợi ý thí nghiệm 4';
+                        notifQuestion.textContent = 'Bước 1: Chọn lọ CuSO₄ (đồng sunfat - màu xanh)\nBước 2: Click vào ống nghiệm\nBước 3: Chọn NaOH (natri hidroxit)\nBước 4: Click vào ống nghiệm lần nữa\nBước 5: Quan sát hiện tượng!';
+                    }
+                    
+                    notification.classList.add('show');
+                    notificationOverlay.classList.add('show');
+                }, 300);
+            });
+        });
+
+        function showNotification(title, text, color) {
+            const notifQuestion = notification.querySelector('.notification-question');
+            const notifAnswer = notification.querySelector('.notification-answer');
+            const clickHint = notification.querySelector('.click-hint');
+            
+            notifQuestion.textContent = text;
+            notifQuestion.style.whiteSpace = 'pre-line';
+            notifAnswer.classList.remove('show');
+            clickHint.style.display = 'none';
+            
+            const notifTitle = notification.querySelector('.notification-title');
+            notifTitle.innerHTML = title;
+            notification.style.borderLeftColor = color;
+            notification.classList.add('show');
+            notificationOverlay.classList.add('show');
+            
+            setTimeout(function() {
+                if (notificationOverlay.classList.contains('show') && !hintModal.classList.contains('show') && !currentQuestion) {
+                    notificationOverlay.classList.remove('show');
+                    notification.classList.remove('show');
+                }
+            }, 5000);
+        }
+
+        resetBtn.addEventListener('click', function() {
+            tubeState = [];
+            
+            const liquid = testTube.querySelector('.tube-liquid');
+            const nail = testTube.querySelector('.nail-in-tube');
+            const copperCoating = testTube.querySelector('.copper-coating');
+            const precipitate = testTube.querySelector('.precipitate');
+            
+            liquid.style.height = '0';
+            liquid.style.background = 'transparent';
+            nail.style.display = 'none';
+            nail.style.transition = 'none';
+            nail.style.top = '';
+            copperCoating.style.height = '0';
+            precipitate.style.height = '0';
+            precipitate.style.background = 'transparent';
+            
+            questionButton.classList.remove('show');
+            currentQuestion = '';
+            currentAnswer = '';
+            
+            updateChemicalsList();
+            bottles.forEach(function(b) {
+                b.classList.remove('selected');
+            });
+            testTube.classList.remove('can-add');
+            selectedChemical = null;
+            
+            showNotification('✅ Đã reset!', 'Ống nghiệm đã được làm sạch. Bắt đầu thí nghiệm mới!', '#3498db');
+        });
+
+        updateChemicalsList();
+    </script>
+</body>
+</html>
